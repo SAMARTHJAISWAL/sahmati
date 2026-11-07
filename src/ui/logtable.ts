@@ -18,7 +18,7 @@ function esc(s: string): string {
 function short(cmd: Command): string {
   switch (cmd.kind) {
     case 'noop':
-      return '·';
+      return 'no-op';
     case 'set':
       return `${cmd.key}=${cmd.value}`;
     case 'del':
