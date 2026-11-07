@@ -1,0 +1,34 @@
+{
+  "name": "sahmati",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An interactive, deterministic, in-browser simulator of the Raft consensus algorithm.",
+  "license": "MIT",
+  "author": "Samarth Jaiswal",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:pages": "GITHUB_PAGES=true vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fuzz": "FUZZ_SEEDS=20000 vitest run tests/fuzz.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/ibm-plex-sans-devanagari": "^5.3.0"
+  }
+}
