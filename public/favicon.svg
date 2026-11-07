@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .bg{fill:#2f3c8f}.f{fill:#f3eee4}.l{fill:#2fc195}.e{stroke:#f3eee4;stroke-width:2.5;opacity:.55}
+    @media (prefers-color-scheme: dark){.bg{fill:#9aa5ff}.f{fill:#11131a}.e{stroke:#11131a}}
+  </style>
+  <rect class="bg" width="64" height="64" rx="15"/>
+  <g class="e">
+    <line x1="32" y1="17" x2="17" y2="42"/><line x1="32" y1="17" x2="47" y2="42"/><line x1="17" y1="42" x2="47" y2="42"/>
+  </g>
+  <circle class="f" cx="17" cy="42" r="7"/>
+  <circle class="f" cx="47" cy="42" r="7"/>
+  <path class="l" d="M32 8.5l8 4.6v9.2l-8 4.6-8-4.6v-9.2z"/>
+</svg>

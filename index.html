@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sahmati · Raft consensus, simulated</title>
+    <meta
+      name="description"
+      content="An interactive, deterministic simulator of the Raft consensus algorithm. Crash servers, partition the network, drop messages and watch leader election, log replication and commitment."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f3eee4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#11131a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="sahmati · Raft consensus, simulated" />
+    <meta property="og:description" content="Crash servers, split the network and watch Raft elect leaders and replicate a key-value store, one message at a time." />
+    <meta property="og:url" content="https://samarthjaiswal.github.io/sahmati/" />
+    <meta property="og:image" content="https://samarthjaiswal.github.io/sahmati/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <a class="skip" href="#stage-panel">Skip to the simulator</a>
+    <header class="masthead">
+      <a class="brand" href="https://github.com/SAMARTHJAISWAL/sahmati" rel="noopener" title="sahmati on GitHub">
+        <span class="brand-deva" lang="hi">सहमति</span>
+        <span class="brand-latin">sahmati</span>
+      </a>
+      <p class="tagline">Raft consensus, one message at a time</p>
+      <nav class="topnav" aria-label="Site">
+        <button type="button" class="btn ghost" id="btn-share" title="Copy a link that replays this exact run">Share run</button>
+        <button type="button" class="btn ghost icon-only" id="btn-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
+        <a class="btn ghost" id="link-source" href="https://github.com/SAMARTHJAISWAL/sahmati" rel="noopener">Source</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="panel stage-panel" id="stage-panel" aria-label="Cluster" tabindex="-1">
+        <div class="transport" role="toolbar" aria-label="Playback">
+          <button type="button" class="btn primary" id="btn-play" aria-keyshortcuts="Space">Pause</button>
+          <button type="button" class="btn" id="btn-step" aria-keyshortcuts="." title="Process the next event (.)">Step</button>
+          <label class="speed">
+            <span class="lbl">Speed</span>
+            <input type="range" id="speed" min="-1" max="1" step="0.01" value="0" aria-describedby="speed-out" />
+            <output id="speed-out">1×</output>
+          </label>
+          <div class="status" aria-live="polite">
+            <span class="clock" id="clock">t = 0 ms</span>
+            <span class="summary" id="summary">no leader</span>
+          </div>
+          <button type="button" class="safety ok" id="safety" aria-live="polite">5 / 5 safety properties hold</button>
+        </div>
+        <div class="stage-wrap">
+          <svg id="stage" viewBox="0 0 800 560" aria-labelledby="stage-title stage-desc" preserveAspectRatio="xMidYMid meet">
+            <title id="stage-title">Raft cluster</title>
+            <desc id="stage-desc">Servers arranged in a circle; messages travel between them. Select a server for actions.</desc>
+          </svg>
+          <div class="node-menu" id="node-menu" role="menu" hidden></div>
+          <p class="drag-hint" id="drag-hint" hidden>Drop next to another server to join its side of the network, or in open space to cut this one off.</p>
+        </div>
+        <ul class="legend" aria-label="Message legend">
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><path class="m-vote" d="M0,-6 L6,0 L0,6 L-6,0Z" /></svg>RequestVote</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><circle class="m-vote" r="4.5" /></svg>vote reply</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><rect class="m-append" x="-6" y="-4.5" width="12" height="9" rx="2" /></svg>AppendEntries</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><rect class="m-append hollow" x="-5" y="-3.5" width="10" height="7" rx="2" /></svg>heartbeat</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><circle class="m-append" r="4.5" /></svg>append reply</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><rect class="m-client" x="-6" y="-4.5" width="12" height="9" rx="4.5" /></svg>client</li>
+          <li><svg viewBox="-8 -8 16 16" aria-hidden="true"><path class="m-x" d="M-4,-4 L4,4 M4,-4 L-4,4" /></svg>lost</li>
+        </ul>
+      </section>
+
+      <aside class="side" aria-label="Controls">
+        <section class="panel narration" id="narration" aria-labelledby="narration-title">
+          <div class="narr-head">
+            <h2 id="narration-title">Free play</h2>
+            <span class="narr-step" id="narr-step"></span>
+          </div>
+          <p class="caption" id="caption" aria-live="polite">
+            Five servers run Raft. Watch one win an election, then click any server to crash it, make it time out, or send a write
+            through it. Drag a server away from the others to partition the network. Or pick a guided scenario below.
+          </p>
+          <div class="narr-actions" id="narr-actions" hidden>
+            <button type="button" class="btn primary" id="btn-next" aria-keyshortcuts="n">Next</button>
+            <button type="button" class="btn" id="btn-restart-scn">Restart</button>
+            <button type="button" class="btn ghost" id="btn-exit-scn">Exit</button>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="scn-title">
+          <h2 id="scn-title">Scenarios</h2>
+          <ol class="scenario-list" id="scenario-list"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="net-title">
+          <h2 id="net-title">Network</h2>
+          <div class="btn-row" role="group" aria-label="Partition presets">
+            <button type="button" class="btn" data-split="isolate">Isolate leader</button>
+            <button type="button" class="btn" data-split="minority">Leader in minority</button>
+            <button type="button" class="btn" data-split="nomajority">No majority</button>
+            <button type="button" class="btn" data-split="heal" aria-keyshortcuts="h">Heal</button>
+          </div>
+          <label class="field">
+            <span class="lbl">Message loss <output id="drop-out">0%</output></span>
+            <input type="range" id="drop" min="0" max="50" step="1" value="0" />
+          </label>
+          <label class="field">
+            <span class="lbl">Latency <output id="lat-out">20 ms</output></span>
+            <input type="range" id="latency" min="5" max="80" step="1" value="20" />
+          </label>
+          <div class="toggles">
+            <label class="toggle"><input type="checkbox" id="prevote" /><span>PreVote</span></label>
+            <label class="toggle"><input type="checkbox" id="fastbackup" /><span>Fast log backtracking</span></label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="client-title">
+          <h2 id="client-title">Client</h2>
+          <form class="client-form" id="client-form">
+            <label class="field grow">
+              <span class="lbl">Command</span>
+              <input type="text" id="client-cmd" value="x=1" autocomplete="off" spellcheck="false" aria-describedby="client-help" />
+            </label>
+            <label class="field">
+              <span class="lbl">Send to</span>
+              <select id="client-via"></select>
+            </label>
+            <button type="submit" class="btn primary">Send</button>
+          </form>
+          <p class="help" id="client-help"><code>x=5</code>, <code>del x</code> or <code>get x</code>. Writes and reads both go through the log.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="cluster-title">
+          <h2 id="cluster-title">Cluster</h2>
+          <div class="field">
+            <span class="lbl" id="size-lbl">Servers</span>
+            <div class="seg" role="radiogroup" aria-labelledby="size-lbl" id="size-seg">
+              <button type="button" role="radio" data-n="3">3</button>
+              <button type="button" role="radio" data-n="5">5</button>
+              <button type="button" role="radio" data-n="7">7</button>
+            </div>
+          </div>
+          <form class="seed-form" id="seed-form">
+            <label class="field grow">
+              <span class="lbl">Seed</span>
+              <input type="number" id="seed" min="0" max="4294967295" step="1" value="1" inputmode="numeric" />
+            </label>
+            <button type="submit" class="btn" aria-keyshortcuts="r">Reset</button>
+            <button type="button" class="btn ghost" id="btn-random">Random</button>
+          </form>
+        </section>
+      </aside>
+
+      <section class="panel logs" aria-labelledby="logs-title">
+        <div class="panel-head">
+          <h2 id="logs-title">Logs</h2>
+          <ul class="key">
+            <li><span class="swatch committed"></span>committed</li>
+            <li><span class="swatch uncommitted"></span>not committed</li>
+            <li><span class="swatch conflict"></span>differs from leader</li>
+            <li><span class="swatch commitline"></span>commit index</li>
+          </ul>
+        </div>
+        <div class="logtable" id="logtable"></div>
+      </section>
+
+      <section class="panel timeline" aria-labelledby="tl-title">
+        <div class="panel-head">
+          <h2 id="tl-title">Events</h2>
+          <div class="chips" role="group" aria-label="Filter events" id="tl-filters"></div>
+        </div>
+        <ol class="events" id="events" aria-live="off"></ol>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>
+        Raft is from Diego Ongaro and John Ousterhout,
+        <a href="https://raft.github.io/raft.pdf" rel="noopener">“In Search of an Understandable Consensus Algorithm”</a> (USENIX ATC 2014).
+        This simulator is an independent implementation by Samarth Jaiswal. Everything runs in your browser.
+        <a href="https://github.com/SAMARTHJAISWAL/sahmati" rel="noopener">Source on GitHub</a> · MIT licence.
+      </p>
+    </footer>
+
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <h2 id="help-title">Keyboard shortcuts</h2>
+      <dl class="keys">
+        <dt><kbd>Space</kbd></dt><dd>Play / pause</dd>
+        <dt><kbd>.</kbd></dt><dd>Step to the next event</dd>
+        <dt><kbd>1</kbd>–<kbd>7</kbd></dt><dd>Select a server</dd>
+        <dt><kbd>c</kbd></dt><dd>Crash / restart the selected server</dd>
+        <dt><kbd>t</kbd></dt><dd>Make the selected server time out now</dd>
+        <dt><kbd>w</kbd></dt><dd>Send the client command through the selected server</dd>
+        <dt><kbd>i</kbd></dt><dd>Isolate the selected server</dd>
+        <dt><kbd>h</kbd></dt><dd>Heal the network</dd>
+        <dt><kbd>n</kbd></dt><dd>Next scenario step</dd>
+        <dt><kbd>r</kbd></dt><dd>Reset with the current seed</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Close menus, deselect</dd>
+      </dl>
+      <form method="dialog"><button class="btn primary">Close</button></form>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
