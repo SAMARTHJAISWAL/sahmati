@@ -50,6 +50,11 @@ export class LogTable {
   private stickToEnd = true;
 
   constructor(root: HTMLElement) {
+    // The legend's term chips use the same palette as the cells.
+    document.querySelectorAll<HTMLElement>('.term-chips span').forEach((el, i) => {
+      el.style.setProperty('--cell', termColor(i + 1));
+      el.style.setProperty('--cell-ink', termInk(i + 1));
+    });
     root.replaceChildren();
     this.labels = document.createElement('div');
     this.labels.className = 'lt-col';

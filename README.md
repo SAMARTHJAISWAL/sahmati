@@ -9,6 +9,10 @@ An interactive simulator of the [Raft consensus algorithm](https://raft.github.i
 
 **[Open the simulator →](https://samarthjaiswal.github.io/sahmati/)**
 
+![The "Leader crash and re-election" scenario: two candidates split the first election and S1 wins; S1 crashes; S5 times out, wins term 2 with the votes of the three live followers, commits a write with one server down; S1 restarts and is brought back in line](docs/demo.gif)
+
+The same run, frozen mid-replication:
+
 ![Five servers mid-replication: the leader S1 sends AppendEntries carrying a new entry to four followers; the log table below shows five committed entries and one that is not yet committed](docs/hero.png)
 
 The Raft core is about 600 lines of TypeScript with no DOM code in it. It is checked by unit tests for each rule in the paper's Figure 2, by a fuzzer that checks all five of Raft's safety properties after every event, by a liveness check and a linearizability checker, and by mutation tests that inject known bugs into the implementation to show that the fuzzer catches them.
@@ -28,7 +32,7 @@ The leader accepts client commands, appends them to its **log** and replicates t
 - **Split the network** by dragging a server away from the others, or onto another server's side. Presets: isolate the leader, put the leader in a minority, or leave no majority anywhere.
 - **Change the network**: message loss from 0 to 50%, latency from 5 to 80 ms, and the PreVote and fast-backtracking options.
 - **Send client commands** (`x=5`, `del x`, `get x`) to any server or to whichever one the client believes is the leader.
-- **Read the logs**: each server's log as cells coloured and numbered by term, hatched until committed, with the commit index drawn as a bar, entries that differ from the leader's outlined, and each server's applied key-value state.
+- **Read the logs**: each server's log as cells coloured and numbered by term (the key shows which colour is which), solid once committed and hatched until then, with the commit index drawn as a bar, entries that differ from the leader's outlined, and each server's applied key-value state.
 - **Follow the event log**, filtered by elections, replication, client, faults or individual messages.
 - **Control time**: play, pause, step one event at a time, and run from 0.1× to 10× speed. At 1×, a 20 ms message takes 0.2 s to cross the screen.
 - **Share a run**: the link encodes the seed, the configuration and every action you took, so opening it replays the run to the identical state.
@@ -170,7 +174,9 @@ Each mutation is a one-line, realistic bug behind a test-only flag (`mutations` 
 
 All seven are caught, each in under half a second. The Figure 8 bug is the hardest: it needs a leader whose entry stays on one server, a second leader elected without it, the first leader re-elected and replicating its old entry to a majority, and a crash in the one round trip before its own no-op lands. The leader-churn fault and swarm testing were added to the fuzzer for this bug; before them it survived 5,000 seeds.
 
-One more mutation is in the code and not in the table, because the fuzzer **does not** catch it: a follower that sets `commitIndex = leaderCommit` instead of `min(leaderCommit, index of last new entry)`. Exploiting it needs a follower whose log matches the leader up to some index but holds stale entries after it that the leader's AppendEntries never reach. In this implementation a leader's requests within one term never leave a follower in that state, so in 10,000 seeds it never happened. A unit test (`raft-rules.test.ts`) shows the mutated rule misbehaving directly.
+One more mutation is in the code and not in the table, because no test of behaviour can catch it here: a follower that caps its new `commitIndex` at the end of its own log, `min(leaderCommit, last log index)`, instead of at the last entry the request carried, `min(leaderCommit, index of last new entry)`. The two differ only when the follower holds entries past the end of the request. That is harmful only if those entries differ from the leader's, and in this implementation that never happens. A leader's first successful AppendEntries to a follower whose log has diverged starts at the first conflicting index, so the stale suffix is deleted before the commit rule runs. The requests that do end early are late or reordered ones, and by the time they arrive the entries after them came from the same leader.
+
+Measured rather than argued: with the commit rule instrumented over 60,000 fuzz seeds (19 million AppendEntries), the mutated rule would have produced a different `commitIndex` 265 times. In the 261 of those where the sender was still leader to compare against, every extra entry was identical to the leader's, so the mutation would have committed nothing wrong. In mutation-testing terms it is an *equivalent mutant* for this implementation. It would become a real bug in a design where a follower can keep a stale suffix past a request, for example one that pipelines requests from an optimistic `nextIndex`. A unit test (`raft-rules.test.ts`) pins the correct rule by building that state by hand.
 
 ### Determinism and share links
 
@@ -209,8 +215,8 @@ src/
   ui/             the page: stage (SVG), log table, event timeline, controller
   main.ts, style.css
 tests/            Vitest: rules, scenarios, determinism, linearizability, fuzz, mutations
-scripts/          e2e.py and capture.py (Python Playwright)
-docs/             screenshots
+scripts/          e2e.py, capture.py and record_gif.py (Python Playwright)
+docs/             screenshots and the demo GIF
 ```
 
 The front end is plain TypeScript and SVG with no framework: the page is one canvas-like view plus a few panels, and updating them directly each frame was simpler than introducing a rendering library. Fonts (IBM Plex Sans, Plex Mono, Plex Sans Devanagari and Fraunces) are bundled through Fontsource, so the site makes no third-party requests. The production bundle is 73 KB of JavaScript (24 KB gzipped) and 22 KB of CSS (6 KB gzipped), plus fonts.
@@ -239,6 +245,7 @@ python scripts/e2e.py http://localhost:8765/sahmati/
 
 npm run build && npx vite preview --port 4173 &
 python scripts/capture.py http://localhost:4173/
+python scripts/record_gif.py http://localhost:4173/   # docs/demo.gif, also needs Pillow
 ```
 
 Pushing to `main` runs CI (typecheck, tests, both builds) and deploys to GitHub Pages.

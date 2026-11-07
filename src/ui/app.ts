@@ -205,6 +205,8 @@ export class App {
     }
     $('narr-actions').hidden = false;
     $('narration-title').textContent = def.title;
+    // Until the first step finishes, say what the scenario is about rather than leaving the old text up.
+    $('caption').textContent = def.summary;
     this.beginStep();
     if (matchMedia('(max-width: 900px)').matches) $('stage-panel').scrollIntoView({ block: 'start', behavior: this.reducedMotion ? 'auto' : 'smooth' });
   }

@@ -96,7 +96,7 @@ export const isClientEndpoint = (e: Endpoint): boolean => e < 0;
 
 /**
  * Bugs that can be injected for the mutation tests. Each one is a single,
- * realistic mistake; the fuzzer must catch every one of them.
+ * realistic mistake; the fuzzer catches every one that can change behaviour.
  */
 export interface Mutations {
   /** Commit any entry once replicated on a majority, ignoring its term (the Figure 8 bug). */
@@ -111,7 +111,10 @@ export interface Mutations {
   skipConsistencyCheck?: boolean;
   /** On a conflicting entry, overwrite just that slot instead of deleting it and everything after it. */
   overwriteWithoutTruncate?: boolean;
-  /** Follower sets commitIndex = leaderCommit, not min(leaderCommit, index of last new entry). */
+  /**
+   * Follower caps commitIndex at its own last log index, not at the last entry the request carried.
+   * An equivalent mutant here: no reachable state makes it commit a wrong entry (see README).
+   */
   commitIndexNoMin?: boolean;
   /** Count vote replies without checking they are for the current term. */
   countStaleVotes?: boolean;
