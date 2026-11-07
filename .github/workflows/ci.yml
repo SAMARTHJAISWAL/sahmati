@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Tests (unit, scenarios, determinism, 2,000-seed fuzz, mutation tests)
+        run: npm test
+        env:
+          FUZZ_SEEDS: '2000'
+      - run: npm run build
+      - name: Build for GitHub Pages
+        run: npm run build:pages
